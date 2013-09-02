@@ -41,8 +41,10 @@
             handleClass     : 'dd-handle',
             collapsedClass  : 'dd-collapsed',
             placeClass      : 'dd-placeholder',
+            wrapperClass    : 'dd-wrapper',
             noDragClass     : 'dd-nodrag',
             emptyClass      : 'dd-empty',
+            placeholderEl   : 'div',
             expandBtnHTML   : '<button data-action="expand" type="button">Expand</button>',
             collapseBtnHTML : '<button data-action="collapse" type="button">Collapse</button>',
             group           : 0,
@@ -68,7 +70,7 @@
 
             list.el.data('nestable-group', this.options.group);
 
-            list.placeEl = $('<div class="' + list.options.placeClass + '"/>');
+            list.placeEl = $('<' + list.options.placeholderEl + ' class="' + list.options.placeClass + '"/>');
 
             $.each(this.el.find(list.options.itemNodeName), function(k, el) {
                 list.setParent($(el));
@@ -261,6 +263,7 @@
 
             this.dragEl = $(document.createElement(this.options.listNodeName)).addClass(this.options.listClass + ' ' + this.options.dragClass);
             this.dragEl.css('width', dragItem.width());
+            this.dragEl.css('height', dragItem.height());
 
             // fix for zepto.js
             //dragItem.after(this.placeEl).detach().appendTo(this.dragEl);
@@ -268,11 +271,27 @@
             dragItem[0].parentNode.removeChild(dragItem[0]);
             dragItem.appendTo(this.dragEl);
 
-            $(document.body).append(this.dragEl);
-            this.dragEl.css({
-                'left' : e.pageX - mouse.offsetX,
-                'top'  : e.pageY - mouse.offsetY
-            });
+            // fix for table elements
+            if (this.options.listNodeName == 'tbody') {
+                var dragTbody = $(this.options.listNodeName + '.' + this.options.listClass),
+                    dragTable = dragTbody.parent(),
+                    dragWrapper = dragTable.parent();
+                if ( dragTable.is('table') ) {
+                    var dragTableEl = $(document.createElement('table')).addClass(dragTable.attr('class')).addClass(this.options.wrapperClass).css('display', 'block');
+                    dragTableEl.append(this.dragEl);
+                    dragWrapper.append(dragTableEl);
+                    dragTableEl.css({
+                        'left' : e.pageX - mouse.offsetX,
+                        'top'  : e.pageY - mouse.offsetY
+                    });
+                }
+            } else {
+                $(document.body).append(this.dragEl);
+                this.dragEl.css({
+                    'left' : e.pageX - mouse.offsetX,
+                    'top'  : e.pageY - mouse.offsetY
+                });
+            }
             // total depth of dragging item
             var i, depth,
                 items = this.dragEl.find(this.options.itemNodeName);
@@ -293,6 +312,12 @@
             this.placeEl.replaceWith(el);
 
             this.dragEl.remove();
+            
+            // fix for table elements
+            if (this.options.listNodeName == 'tbody'){
+                $('.' + this.options.wrapperClass).remove();
+            }
+            
             this.el.trigger('change');
             if (this.hasNewRoot) {
                 this.dragRootEl.trigger('change');
@@ -448,7 +473,7 @@
                     this.unsetParent(parent.parent());
                 }
                 if (!this.dragRootEl.find(opt.itemNodeName).length) {
-                    this.dragRootEl.append('<div class="' + opt.emptyClass + '"/>');
+                    this.dragRootEl.append('<' + opt.placeholderEl + ' class="' + opt.emptyClass + '"/>');
                 }
                 // parent root list has changed
                 if (isNewRoot) {
